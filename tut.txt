@@ -1,0 +1,188 @@
+AWS EC2 + Backend Deployment Notes (Step-by-Step)
+====================================================
+
+GOAL
+----
+Deploy a Node.js backend on AWS EC2 and expose it via Nginx with PM2 for production.
+
+
+PROJECT STRUCTURE (LOCAL)
+--------------------------
+  project-root/
+  ├── test-backend/
+  └── test-instance-key.pem
+
+
+1. FIX KEY PERMISSIONS (LOCAL)
+-------------------------------
+  chmod 400 ../test-instance-key.pem
+
+  Restricts access to your private key (required for SSH).
+
+
+2. CONNECT TO EC2 (SSH)
+------------------------
+  ssh -i ../test-instance-key.pem ubuntu@ec2-15-206-45-73.ap-south-1.compute.amazonaws.com
+
+  OR (if key is in same folder):
+
+  ssh -i "test-instance-key.pem" ubuntu@ec2-15-206-45-73.ap-south-1.compute.amazonaws.com
+
+  Opens terminal access to your EC2 server.
+  Always use the command AWS provides.
+
+
+3. UPLOAD CODE TO EC2 (LOCAL)
+------------------------------
+  cd test-backend
+
+  rsync -avz --exclude 'node_modules' --exclude '.git' --exclude '.env' \
+    -e "ssh -i ../test-instance-key.pem" \
+    . ubuntu@ec2-15-206-45-73.ap-south-1.compute.amazonaws.com:~/app
+
+  Transfers your backend code to EC2 efficiently.
+
+
+4. SETUP BACKEND ON EC2
+------------------------
+  cd app
+  npm install
+  npm start
+
+  - Install dependencies
+  - Start backend server (port 3000)
+
+
+5. TEST BACKEND INSIDE EC2
+---------------------------
+  curl http://localhost:3000
+
+  Confirms backend is running internally.
+
+
+6. AWS SECURITY GROUP RULES
+----------------------------
+  Allow:
+  - Port 22  → SSH
+  - Port 80  → HTTP (Nginx)
+  - Port 3000 → (temporary testing)
+
+
+7. TEST BACKEND IN BROWSER
+---------------------------
+  http://your-domain:3000
+
+  Confirms backend is publicly accessible.
+
+
+8. INSTALL NGINX (EC2)
+-----------------------
+  sudo apt update
+  sudo apt install nginx -y
+
+  Installs web server.
+
+
+9. START NGINX
+--------------
+  sudo systemctl start nginx
+
+
+10. CHECK NGINX STATUS
+-----------------------
+  sudo systemctl status nginx
+
+
+11. CONFIGURE REVERSE PROXY
+-----------------------------
+  sudo nano /etc/nginx/sites-available/default
+
+  Replace:
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+  With:
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+
+12. SAVE FILE (nano)
+---------------------
+  Ctrl + O → Enter
+  Ctrl + X
+
+
+13. RESTART NGINX
+-----------------
+  sudo systemctl restart nginx
+
+
+14. FINAL TEST
+--------------
+  http://your-domain
+
+  Backend accessible without port.
+
+
+15. CLEANUP (IMPORTANT)
+------------------------
+  Remove port 3000 from Security Group.
+
+
+16. PREVENT SSH DISCONNECTS (LOCAL)
+-------------------------------------
+  nano ~/.ssh/config
+
+  Add:
+
+    Host *
+      ServerAliveInterval 60
+      ServerAliveCountMax 5
+
+
+17. SETUP PM2 (KEEP BACKEND RUNNING)
+======================================
+
+  Install PM2:
+    sudo npm install -g pm2
+
+  Start app with PM2:
+    cd app
+    pm2 start index.js
+
+  Check running apps:
+    pm2 list
+
+  Enable auto start on reboot:
+    pm2 startup
+    (Copy & run the command it gives)
+
+    pm2 save
+
+  Useful PM2 commands:
+    pm2 restart index   # restart app
+    pm2 stop index      # stop app
+    pm2 delete index    # remove app
+    pm2 logs            # view logs
+
+
+FINAL ARCHITECTURE
+------------------
+  User → Nginx → PM2 → Node.js backend
+
+
+NEXT IMPROVEMENTS
+-----------------
+  - Add domain (DNS)
+  - Enable HTTPS (SSL)
+  - Connect database (PostgreSQL / AWS RDS)
+  - Setup CI/CD
