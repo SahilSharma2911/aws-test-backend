@@ -41,7 +41,13 @@ const products: Product[] = [
   { id: 3, name: "Tablet", price: 299.99, stock: 75 },
 ];
 
-const orders: Order[] = [];
+const orders: Order[] = [
+  { id: 1, userId: 1, productId: 2, quantity: 2, totalPrice: 999.98, status: "confirmed", createdAt: "2026-04-28T10:15:00.000Z" },
+  { id: 2, userId: 2, productId: 1, quantity: 1, totalPrice: 999.99, status: "confirmed", createdAt: "2026-04-29T14:30:00.000Z" },
+  { id: 3, userId: 3, productId: 3, quantity: 3, totalPrice: 899.97, status: "pending",   createdAt: "2026-04-30T09:00:00.000Z" },
+  { id: 4, userId: 1, productId: 3, quantity: 1, totalPrice: 299.99, status: "cancelled", createdAt: "2026-05-01T11:45:00.000Z" },
+  { id: 5, userId: 2, productId: 2, quantity: 1, totalPrice: 499.99, status: "confirmed", createdAt: "2026-05-02T16:20:00.000Z" },
+];
 
 app.get("/health", (req: Request, res: Response) => {
   res.json({ status: "ok", app: process.env.APP_NAME, env: process.env.NODE_ENV });
